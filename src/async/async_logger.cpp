@@ -1,6 +1,16 @@
-#include "async_logger.hpp"
-
+#include "xlog/async/async_logger.hpp"
+#include "xlog/logger.hpp"
+#include "xlog/log_sink.hpp"
+#include "xlog/async/async_queue.hpp"
+#include "xlog/formatter.hpp"
+#include <memory>
 namespace xlog {
+class AsyncLogger;
+using AsyncLoggerPtr = std::shared_ptr<AsyncLogger>;
+}
+namespace xlog {
+
+
 
 AsyncLogger::AsyncLogger(LoggerPtr logger_ptr) : logger(std::move(logger_ptr)), running(true), thread(&AsyncLogger::worker, this) {}
 

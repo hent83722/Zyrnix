@@ -1,4 +1,6 @@
-#include "util.hpp"
+#include "xlog/util.hpp"
+#include "xlog/logger.hpp"
+#include "xlog/log_sink.hpp"
 
 namespace xlog {
 

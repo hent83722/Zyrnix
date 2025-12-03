@@ -1,4 +1,7 @@
-#include "thread_pool.hpp"
+#include "xlog/async/thread_pool.hpp"
+#include "xlog/logger.hpp"
+#include "xlog/log_sink.hpp"
+#include "xlog/async/async_logger.hpp"
 
 namespace xlog {
 

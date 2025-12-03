@@ -1,5 +1,7 @@
-#include "rotating_file_sink.hpp"
+#include "xlog/sinks/rotating_file_sink.hpp"
+#include "xlog/sinks/file_sink.hpp"
 #include <filesystem>
+namespace fs = std::filesystem;
 
 namespace xlog {
 

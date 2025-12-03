@@ -1,4 +1,8 @@
-#include "json_sink.hpp"
+#include "xlog/experimental/json_sink.hpp"
+#include "xlog/sinks/file_sink.hpp"
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <mutex>
 
 namespace xlog {
 

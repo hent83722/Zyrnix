@@ -1,4 +1,9 @@
-#include "network_sink.hpp"
+#include "xlog/experimental/network_sink.hpp"
+#include "xlog/sinks/file_sink.hpp"
+#include <asio.hpp>
+#include <mutex>
+#include <queue>
+#include <string>
 
 namespace xlog {
 

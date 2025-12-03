@@ -1,4 +1,7 @@
-#include "file_sink.hpp"
+#include "xlog/sinks/file_sink.hpp"
+#include "xlog/log_sink.hpp"
+#include <fstream>
+#include <mutex>
 
 namespace xlog {
 

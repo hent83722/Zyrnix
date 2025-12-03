@@ -1,26 +1,29 @@
 #pragma once
-#include "logger.hpp"
-#include <thread>
-#include <queue>
-#include <condition_variable>
+#include <memory>
+#include <string>
+#include <vector>
 #include <atomic>
+#include <thread>
+#include "xlog/logger.hpp"
+#include "xlog/async/async_queue.hpp"
+#include "xlog/async/thread_pool.hpp"
+#include "xlog/config.hpp"
 
 namespace xlog {
 
 class AsyncLogger {
 public:
-    explicit AsyncLogger(LoggerPtr logger);
-    ~AsyncLogger();
-    void log(LogLevel level, const std::string& message);
-
+    AsyncLogger(LoggerPtr logger, const Config& cfg);
+    void push(LogMessage&& msg);
+    void flush();
 private:
-    void worker();
-    LoggerPtr logger;
-    std::queue<std::pair<LogLevel, std::string>> queue;
-    std::mutex mtx;
-    std::condition_variable cv;
-    std::thread thread;
-    std::atomic<bool> running;
+    LoggerPtr logger_;
+    AsyncQueue queue_;
+    ThreadPool pool_;
+    std::atomic<bool> running_;
+    void worker_loop();
 };
+
+using AsyncLoggerPtr = std::shared_ptr<AsyncLogger>;
 
 }

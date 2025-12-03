@@ -1,4 +1,5 @@
 #pragma once
+
 #include "logger.hpp"
 #include "log_sink.hpp"
 #include "sinks/stdout_sink.hpp"
@@ -12,3 +13,5 @@
 #include "color.hpp"
 #include "config.hpp"
 #include "fmt_compat/fmt_shim.hpp"
+
+// Experimental sinks removed for now

@@ -1,4 +1,9 @@
-#include "logger.hpp"
+#include "xlog/logger.hpp"
+#include "xlog/log_sink.hpp"
+#include "xlog/config.hpp"
+#include "xlog/formatter.hpp"
+#include "xlog/log_level.hpp"
+#include "xlog/color.hpp"
 
 namespace xlog {
 

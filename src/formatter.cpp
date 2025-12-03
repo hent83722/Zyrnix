@@ -1,5 +1,7 @@
-#include "formatter.hpp"
-#include <ctime>
+#include "xlog/formatter.hpp"
+#include "xlog/log_sink.hpp"
+#include "xlog/log_level.hpp"
+#include "xlog/color.hpp"
 
 namespace xlog {
 
