@@ -9,12 +9,12 @@
 ## Features
 
 - **Header-only library** (can also compile as a static library)
-- **Multiple log levels:** Trace, Debug, Info, Warn, Error, Critical
-- **Multiple sinks:** Console, File, Rotating File, Daily File, Custom Sinks
+- **Multiple log levels:** trace, Debug, Info, Warn, Error, Critical
+- **Multiple sinks:** console, File, Rotating File, Daily File, Custom Sinks
 - **Thread-safe and asynchronous logging**
 - **Stream-style logging syntax** (`*logger << xlog::Info << "Message" << xlog::endl;`)
-- **Flexible formatting:** Timestamps, colors, structured messages, JSON support (experimental)
-- **Minimal dependencies:** Uses standard C++17 and optional fmt library for formatting
+- **Flexible formatting:** timestamps, colors, structured messages, and experimental JSON support
+- **Minimal dependencies:** uses standard C++17 and optional fmt library for formatting
 
 ---
 
@@ -70,7 +70,7 @@ bash scripts/debug_run.sh
 
 * Compiles in Debug mode and runs the test executable.
 
-* Use bash scripts/memcheck.sh to run Valgrind and check for memory leaks.
+* Use ```bash scripts/memcheck.sh``` to run Valgrind and check for memory leaks.
 
 ---
 
