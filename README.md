@@ -8,107 +8,124 @@
 
 ## Features
 
--  **Header-only library** (compile as static library optionally)
--  **Multiple log levels:** Trace, Debug, Info, Warn, Error, Critical
--  **Multiple sinks:** Console, File, Rotating File, Daily File, Custom Sinks
--  **Thread-safe and asynchronous logging**
--  **Stream-style logging syntax** (`logger << xlog::Info << "Message" << xlog::endl;`)
--  **Flexible formatting:** Timestamps, colors, structured messages, JSON support (experimental)
--  **Minimal dependencies:** Uses standard C++17 and optional third-party fmt library for formatting
+- **Header-only library** (can also compile as a static library)
+- **Multiple log levels:** Trace, Debug, Info, Warn, Error, Critical
+- **Multiple sinks:** Console, File, Rotating File, Daily File, Custom Sinks
+- **Thread-safe and asynchronous logging**
+- **Stream-style logging syntax** (`*logger << xlog::Info << "Message" << xlog::endl;`)
+- **Flexible formatting:** Timestamps, colors, structured messages, JSON support (experimental)
+- **Minimal dependencies:** Uses standard C++17 and optional fmt library for formatting
 
 ---
 
 ## Project Structure
 
-```t
+```text
 .
-├── include/xlog # Public headers
-├── src # Implementation files
-├── examples # Example usage
-├── tests # Unit tests
-├── benchmarks # Performance benchmarks
-├── cmake # Build scripts and CMake helpers
-└── docs # Documentation and diagrams
+├── include/xlog          # Public headers
+├── src                   # Implementation files
+├── examples              # Example usage
+├── tests                 # Unit tests
+├── benchmarks            # Performance benchmarks
+├── cmake                 # Build scripts and CMake helpers
+└── docs                  # Documentation and diagrams
 ```
----
-
 ## Installation
 
-### 1. Clone the repository
-
+1. **Clone the repository**
 ```bash
 git clone https://github.com/hent83722/xlog.git
 cd xlog
 ```
-### 2. Build the static library
 
+2. **Build the static library**
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --parallel
 ```
-This will generate a static library libxlog.a in the build folder.
+This will generate a static library ```libxlog.a``` in the build folder.
 
+3. **Add XLog to your project**
 
-### 3. Add XLog to your project
-In your CMake project:
-
-```Cmake
+**Option 1: Add as subdirectory (recommended for development)**
+```cmake
 add_subdirectory(path/to/xlog)
 target_link_libraries(your_project PRIVATE xlog)
 target_include_directories(your_project PRIVATE path/to/xlog/include)
 ```
 
-
+**Option 2: Link installed library (after ```sudo make install```)**
+```cmake
+find_package(xlog REQUIRED)
+target_link_libraries(your_project PRIVATE xlog)
+target_include_directories(your_project PRIVATE ${XLOG_INCLUDE_DIRS})
+```
 ## Usage
 
-### 1. Basic Logging
-
+1. **Create a logger**
 ```cpp
 #include <xlog/xlog.hpp>
 
 int main() {
-    auto logger = xlog::Logger::create_stdout_logger("my_logger");
+    // Create a console logger
+    auto logger = xlog::create_logger("my_logger", xlog::Config{});
 
-    // Log messages with levels
-    logger->log(xlog::LogLevel::Info, "This is an info message!");
-    logger->log(xlog::LogLevel::Warn, "This is a warning message!");
-    logger->log(xlog::LogLevel::Error, "This is an error message!");
+    // Log messages by level
+    logger->info("This is an info message");
+    logger->warn("This is a warning");
+    logger->error("This is an error");
 
     return 0;
 }
 ```
+---
+2. **Adding multiple Sinks**
+```cpp
+#include <xlog/xlog.hpp>
+#include <xlog/sinks/stdout_sink.hpp>
+#include <xlog/sinks/file_sink.hpp>
 
-### 2. Stream-style Logging
+auto logger = xlog::create_logger("multi_sink_logger", xlog::Config{});
+
+// Add console sink
+logger->add_sink(std::make_shared<xlog::StdoutSink>());
+
+// Add file sink
+logger->add_sink(std::make_shared<xlog::FileSink>("app.log"));
+
+// Now logs go to both console and file
+logger->info("Hello world!");
+```
+---
+3. **Stream-Style Logging**
+
 ```cpp
 *logger << xlog::Info << "Stream-style logging works too!" << xlog::endl;
 ```
-
-- Combines the simplicity of std::cout with log levels.
-
+- Combines the simplicity of ```std::cout``` with log levels.
 - Automatically prepends timestamps and level info.
 
-### 3. Multiple Sinks
+---
 
+4. **Asynchronous Logging**
 ```cpp
-logger->add_sink(std::make_shared<xlog::StdoutSink>());
-logger->add_sink(std::make_shared<xlog::FileSink>("app.log"));
+#include <xlog/xlog.hpp>
+#include <xlog/async/async_logger.hpp>
+
+auto async_logger = xlog::create_async_logger(logger);
+async_logger->info("This message is logged asynchronously!");
 ```
-
-- Sends logs to both console and file.
-
-- Can add rotating file sinks, daily logs, or custom sinks.
-
-### 4. Asynchronous Logging
-
-```cpp
-auto async_logger = xlog::Logger::create_async("async_logger");
-async_logger->log(xlog::LogLevel::Info, "This message is logged asynchronously!");
-```
-
-- Logging operations won't block your main program.
-
+- Logging operations won’t block your main program.
 - Great for performance-critical or multi-threaded applications.
+
+5. **Custom Formatting (Optional)**
+XLog supports custom formatting through ```Formatter```:
+```cpp
+auto fmt = std::make_shared<xlog::Formatter>();
+logger->set_formatter(fmt);
+```
+- Customize timestamp, log message structure, or add colors.
 
 ## Why Use XLog Instead of std::cout?
 
@@ -129,6 +146,8 @@ Asynchronous logging minimizes impact on your main program threads.
 
 6. **Maintainability**
 Easier debugging, clear log organization, and removal of temporary debug prints.
+
+---
 
 ## Examples
 
@@ -158,4 +177,3 @@ MIT License. See [LICENSE](./LICENSE) for details.
 ## Summary
 
 **XLog** is a lightweight, flexible logging solution for C++ projects. It makes logging structured, thread-safe, and easy to manage across complex applications. Whether you are debugging, profiling, or shipping a product, XLog helps keep your logs organized and your development process smooth
-
