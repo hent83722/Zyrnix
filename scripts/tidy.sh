@@ -6,6 +6,8 @@ echo " ╚███╔╝ ██║     ██║   ██║██║      "
 echo " ██╔██╗ ██║     ██║   ██║██║   ██║"
 echo "██╔╝ ██╗███████╗╚██████╔╝╚██████╔╝"
 echo "╚═╝  ╚═╝╚══════╝ ╚═════╝  ╚═════╝ "
+cd ~/xlog
+echo "Running static analysis with clang-tidy..."
 mkdir -p build
 cd build
 cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
