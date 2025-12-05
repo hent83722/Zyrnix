@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 set -e
-echo "██╗  ██╗██╗      ██████╗  ██████╗ "
-echo "╚██╗██╔╝██║     ██╔═══██╗██╔════╝ "
-echo " ╚███╔╝ ██║     ██║   ██║██║      "
-echo " ██╔██╗ ██║     ██║   ██║██║   ██║"
-echo "██╔╝ ██╗███████╗╚██████╔╝╚██████╔╝"
-echo "╚═╝  ╚═╝╚══════╝ ╚═════╝  ╚═════╝ "
+cd ~/xlog
+echo "Installing XLog..."
 bash scripts/build.sh
 cd build
 sudo cmake --install .
