@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
-
+echo "██╗  ██╗██╗      ██████╗  ██████╗ "
+echo "╚██╗██╔╝██║     ██╔═══██╗██╔════╝ "
+echo " ╚███╔╝ ██║     ██║   ██║██║      "
+echo " ██╔██╗ ██║     ██║   ██║██║   ██║"
+echo "██╔╝ ██╗███████╗╚██████╔╝╚██████╔╝"
+echo "╚═╝  ╚═╝╚══════╝ ╚═════╝  ╚═════╝ "
 mkdir -p build
 cd build
 cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
