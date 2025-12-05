@@ -6,6 +6,8 @@ echo " ╚███╔╝ ██║     ██║   ██║██║      "
 echo " ██╔██╗ ██║     ██║   ██║██║   ██║"
 echo "██╔╝ ██╗███████╗╚██████╔╝╚██████╔╝"
 echo "╚═╝  ╚═╝╚══════╝ ╚═════╝  ╚═════╝ "
+cd ~/xlog
+echo "Running tests..."
 mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug
