@@ -1,6 +1,7 @@
 #pragma once
-#include "file_sink.hpp"
+#include "xlog/log_sink.hpp"
 #include <string>
+#include <memory>
 #include <cstddef>
 
 namespace xlog {
