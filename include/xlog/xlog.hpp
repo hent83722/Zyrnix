@@ -2,6 +2,7 @@
 #include <string>
 #include "logger.hpp"
 #include "config.hpp"
+#include "log_context.hpp"
 
 namespace xlog {
 

@@ -1,5 +1,6 @@
 #include "xlog/sinks/structured_json_sink.hpp"
 #include "xlog/log_level.hpp"
+#include "xlog/log_context.hpp"
 #include <chrono>
 #include <iomanip>
 #include <sstream>
@@ -76,6 +77,10 @@ std::string StructuredJsonSink::build_json(const std::string& logger_name, LogLe
         json << ",\"" << escape_json_string(key) << "\":\"" << escape_json_string(value) << "\"";
     }
     
+    auto thread_context = LogContext::get_all();
+    for (const auto& [key, value] : thread_context) {
+        json << ",\"" << escape_json_string(key) << "\":\"" << escape_json_string(value) << "\"";
+    }
 
     for (const auto& [key, value] : fields) {
         json << ",\"" << escape_json_string(key) << "\":\"" << escape_json_string(value) << "\"";

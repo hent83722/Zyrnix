@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-sanitizers-brightgreen.svg)](https://github.com/hent83722/xlog/actions)
  
-Latest Xlog version: v1.0.2
+Latest Xlog version: v1.0.3
 
 **XLog** is a modern, lightweight, and high-performance logging library for C++17, inspired by popular logging libraries like `spdlog`. It provides thread-safe logging, multiple sinks, log levels, and flexible formatting, making it ideal for both small projects and large-scale applications.
 
@@ -20,6 +20,7 @@ Latest Xlog version: v1.0.2
 - **Stream-style logging syntax** (`*logger << xlog::Info << "Message" << xlog::endl;`)
 - **Flexible formatting:** timestamps, colors, structured messages, and experimental JSON support
 - **Minimal dependencies:** uses standard C++17 and optional fmt library for formatting
+- **Log contexts & scoped attributes:** Automatic request/transaction tracking (MDC/NDC) - NEW in v1.0.3
 - **Production-ready quality:** AddressSanitizer, ThreadSanitizer, UndefinedBehaviorSanitizer, and fuzz testing
 - **CI/CD integration:** Automated sanitizer checks and fuzzing on every commit
 
@@ -164,6 +165,7 @@ See the examples folder for detailed use cases:
 - file_vs_stdout.cpp – Logging to multiple sinks.
 - rotating_logs.cpp – Rotating file logging for large projects.
 - structured_json_example.cpp – Structured JSON logging for cloud platforms and log aggregators.
+- **context_logging.cpp** – Request tracking with scoped contexts (NEW in v1.0.3)
 
 ## Structured JSON Logging (for Cloud & Enterprise)
 
@@ -198,6 +200,143 @@ Output (JSON Lines format, one JSON object per line):
 - **Queryable fields**: structured data makes logs searchable and analyzable
 - **Distributed tracing**: request IDs and correlation IDs flow through your logs
 - **Performance metrics**: easily extract timing, error codes, and other numeric data
+
+---
+
+## Log Contexts & Scoped Attributes (v1.0.3+)
+
+**Track request context across your entire call stack without passing parameters everywhere.**
+
+XLog provides Mapped Diagnostic Context (MDC) functionality similar to Log4j and SLF4J. Context attributes are stored thread-locally and automatically included in all log messages within that thread.
+
+### Why Use Log Context?
+
+**Problem:** In complex applications, you need to track request IDs, user IDs, session IDs, or transaction IDs across multiple function calls. Passing these as parameters everywhere is tedious and error-prone.
+
+**Solution:** Set context once at the beginning of a request/transaction, and all logs automatically include those fields — even in nested function calls.
+
+### Basic Usage
+
+```cpp
+#include <xlog/log_context.hpp>
+#include <xlog/structured_logger.hpp>
+
+void process_order(const std::string& order_id) {
+    auto logger = xlog::StructuredLogger::create("orders", "orders.jsonl");
+    
+    // Create scoped context - automatically cleaned up when scope exits
+    xlog::ScopedContext ctx;
+    ctx.set("order_id", order_id);
+    ctx.set("user_id", "user-123");
+    
+    // All logs in this scope automatically include order_id and user_id
+    logger->info("Processing order");
+    
+    validate_payment();  // Even nested calls inherit context
+    update_inventory();  // No need to pass order_id everywhere!
+    
+} // Context automatically cleared when function exits
+```
+
+### HTTP Request Tracking
+
+Perfect for tracking requests across microservices:
+
+```cpp
+void handle_request(const HttpRequest& req) {
+    auto logger = xlog::StructuredLogger::create("api", "api.jsonl");
+    
+    // Extract correlation ID from headers
+    xlog::ScopedContext request_ctx;
+    request_ctx.set("request_id", req.header("X-Request-ID"))
+               .set("user_id", req.user_id())
+               .set("endpoint", req.path());
+    
+    logger->info("Request received");
+    
+    // Call business logic - all logs include request context
+    auto result = process_business_logic();
+    
+    logger->info("Request completed", {{"status", "200"}});
+}
+```
+
+**Output (all logs automatically include request_id, user_id, endpoint):**
+```json
+{"timestamp":"2025-12-07T10:30:00.123Z","level":"INFO","logger":"api","message":"Request received","request_id":"req-abc123","user_id":"user-456","endpoint":"/api/orders"}
+{"timestamp":"2025-12-07T10:30:00.145Z","level":"INFO","logger":"api","message":"Request completed","request_id":"req-abc123","user_id":"user-456","endpoint":"/api/orders","status":"200"}
+```
+
+### Nested Contexts
+
+Contexts can be nested for fine-grained tracking:
+
+```cpp
+void process_payment(const std::string& payment_id) {
+    auto logger = xlog::StructuredLogger::create("payments", "payments.jsonl");
+    
+    xlog::ScopedContext payment_ctx;
+    payment_ctx.set("payment_id", payment_id);
+    
+    logger->info("Starting payment");
+    
+    {
+        // Add nested context for database operations
+        xlog::ScopedContext db_ctx;
+        db_ctx.set("operation", "db_query");
+        
+        logger->debug("Fetching user data");  // Includes both payment_id AND operation
+    } // db context removed, payment context remains
+    
+    logger->info("Payment complete");  // Only includes payment_id
+}
+```
+
+### Thread Safety
+
+Each thread has its own isolated context — no cross-contamination:
+
+```cpp
+void worker_thread(int thread_id) {
+    xlog::ScopedContext ctx;
+    ctx.set("thread_id", std::to_string(thread_id));
+    
+    // This thread's logs include thread_id
+    // Other threads' logs are not affected
+}
+```
+
+### Global Application Context
+
+Set application-wide metadata that appears in all logs:
+
+```cpp
+// At application startup
+xlog::LogContext::set("app_version", "1.0.3");
+xlog::LogContext::set("environment", "production");
+xlog::LogContext::set("hostname", "server-01");
+
+// Now all logs automatically include these fields
+```
+
+### API Reference
+
+**`xlog::ScopedContext`** - RAII context manager
+- `set(key, value)` - Set a context attribute (chainable)
+- `get(key)` - Get a context attribute value
+- `remove(key)` - Remove a context attribute
+- `get_all()` - Get all context attributes
+
+**`xlog::LogContext`** - Static context API
+- `LogContext::set(key, value)` - Set global context
+- `LogContext::get(key)` - Get context value
+- `LogContext::clear()` - Clear all context
+- `LogContext::get_all()` - Get all context as map
+
+### See Also
+
+- **Example:** `examples/context_logging.cpp` - Complete working examples
+- **Use Cases:** Microservices, distributed tracing, multi-tenant applications, request tracking
 
  
 ## Integrating Sinks Into Your Server or Service
@@ -240,9 +379,9 @@ endif()
 
 ---
 
-## Testing & Quality Assurance (v1.0.2+)
+## Testing & Quality Assurance (v1.0.3+)
 
-XLog v1.0.2 introduces comprehensive quality assurance tooling to ensure production-grade reliability:
+XLog v1.0.3 introduces comprehensive quality assurance tooling to ensure production-grade reliability:
 
 ### Memory Safety & Data Race Detection
 
