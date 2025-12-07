@@ -22,6 +22,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake clang libpcre3-dev build-essential
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfmt-dev    
       - name: Configure
         run: |
           mkdir build && cd build
