@@ -240,9 +240,9 @@ endif()
 
 ---
 
-## Testing & Quality Assurance (v1.2.0+)
+## Testing & Quality Assurance (v1.0.2+)
 
-XLog v1.2.0 introduces comprehensive quality assurance tooling to ensure production-grade reliability:
+XLog v1.0.2 introduces comprehensive quality assurance tooling to ensure production-grade reliability:
 
 ### Memory Safety & Data Race Detection
 
