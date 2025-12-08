@@ -2,15 +2,22 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <memory>
+#include <functional>
 #include "log_sink.hpp"
+#include "log_level.hpp"
+#include "log_record.hpp"
 
 namespace xlog {
+
+class LogFilter;
 
 class Logger {
 public:
     explicit Logger(std::string name);
 
     void add_sink(LogSinkPtr sink);
+    void clear_sinks();
     void log(LogLevel level, const std::string& message);
 
     void trace(const std::string& msg);
@@ -20,10 +27,25 @@ public:
     void error(const std::string& msg);
     void critical(const std::string& msg);
     
+    void set_level(LogLevel level);
+    LogLevel get_level() const;
+    
+    void add_filter(std::shared_ptr<LogFilter> filter);
+    void clear_filters();
+    void set_filter_func(std::function<bool(const LogRecord&)> func);
+    
+    static std::shared_ptr<Logger> create_stdout_logger(const std::string& name);
+    static std::shared_ptr<Logger> create_async(const std::string& name);
+    
     std::string name;
 
 private:
+    bool should_log(const LogRecord& record) const;
+    
     std::vector<LogSinkPtr> sinks;
+    std::vector<std::shared_ptr<LogFilter>> filters_;
+    std::function<bool(const LogRecord&)> filter_func_;
+    LogLevel min_level_;
     std::mutex mtx;
 };
 

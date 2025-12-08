@@ -21,6 +21,7 @@ Latest Xlog version: v1.0.3
 - **Flexible formatting:** timestamps, colors, structured messages, and experimental JSON support
 - **Minimal dependencies:** uses standard C++17 and optional fmt library for formatting
 - **Log contexts & scoped attributes:** Automatic request/transaction tracking (MDC/NDC) - NEW in v1.0.3
+- **Conditional logging & filtering:** Zero-cost compile-time filtering and runtime dynamic filters - NEW in v1.0.4-beta.1.
 - **Production-ready quality:** AddressSanitizer, ThreadSanitizer, UndefinedBehaviorSanitizer, and fuzz testing
 - **CI/CD integration:** Automated sanitizer checks and fuzzing on every commit
 
