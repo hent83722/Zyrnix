@@ -1,5 +1,5 @@
 #pragma once
-#include "log_sink.hpp"
+#include "../log_sink.hpp"
 #include <fstream>
 #include <string>
 #include <mutex>

@@ -1,18 +1,163 @@
 # XLog v1.0.4 Release Notes
 
-**Release Date:** December 8, 2025
+**Release Date:** December 9, 2025
 
 ## Overview
 
-XLog v1.0.4 introduces **Conditional Logging with Zero-Cost Abstractions**, a major performance and developer experience enhancement that enables intelligent log filtering at both compile-time and runtime.
+XLog v1.0.4 brings three major features focused on flexibility, safety, and optimization:
+1. **Configuration File Support** - JSON configuration without recompiling
+2. **Signal-Safe Logging** - Crash handler support with async-signal-safe operations
+3. **Conditional Compilation Guards** - Reduce binary size by 50-70KB
 
 ## 🚀 New Features
 
-### Conditional Logging & Zero-Cost Abstractions
+### 1. 📄 Configuration File Support
 
-This release adds comprehensive filtering capabilities that eliminate overhead for disabled logs:
+Load logger configurations from JSON files without recompiling your application.
 
-#### 1. **Compile-Time Log Elimination**
+**Key Benefits:**
+- 🔄 Dynamic configuration changes without rebuilds
+- 🎯 Environment-specific configs (dev/staging/production)
+- 📊 Easy A/B testing of logging strategies
+- 🚀 Faster development iteration
+
+**Example:**
+
+```cpp
+#include <xlog/config.hpp>
+
+// Load configuration from file
+xlog::ConfigLoader::load_from_json("config.json");
+
+// Create all configured loggers
+auto loggers = xlog::ConfigLoader::create_loggers();
+
+// Use them
+loggers["app"]->info("Configuration loaded!");
+```
+
+**Configuration Format:**
+
+```json
+{
+  "loggers": [
+    {
+      "name": "app",
+      "level": "info",
+      "async": true,
+      "sinks": [
+        {"type": "stdout"},
+        {"type": "file", "path": "/var/log/app.log"},
+        {"type": "rotating", "path": "app.log", "max_size": 10485760, "max_files": 5}
+      ]
+    }
+  ]
+}
+```
+
+**New API:**
+- `ConfigLoader::load_from_json(path)` - Load from file
+- `ConfigLoader::load_from_json_string(json)` - Load from string
+- `ConfigLoader::create_loggers()` - Create configured loggers
+- `ConfigLoader::get_logger_configs()` - Get parsed configs
+- `ConfigLoader::clear()` - Clear loaded configs
+
+---
+
+### 2. 🚨 Signal-Safe Logging
+
+Async-signal-safe logging for crash handlers (SIGSEGV, SIGABRT, etc.).
+
+**Key Benefits:**
+- ✅ Safe to call from signal handlers
+- ✅ Captures crash information reliably
+- ✅ Lock-free ring buffer design
+- ✅ Uses only async-signal-safe POSIX functions
+- ✅ No malloc/free in critical paths
+
+**Example:**
+
+```cpp
+#include <xlog/sinks/signal_safe_sink.hpp>
+
+// Set up crash logger
+auto crash_sink = std::make_shared<xlog::SignalSafeSink>("crash.log");
+auto crash_logger = std::make_shared<xlog::Logger>("crash");
+crash_logger->add_sink(crash_sink);
+
+void crash_handler(int sig) {
+    crash_logger->log(xlog::LogLevel::Critical, "Application crashed!");
+    crash_sink->flush();  // Ensure logs are written
+    _exit(1);
+}
+
+signal(SIGSEGV, crash_handler);
+signal(SIGABRT, crash_handler);
+```
+
+**Technical Details:**
+- Uses POSIX `write()` instead of `fprintf()`
+- Lock-free circular buffer (no mutexes)
+- Pre-allocated buffer (no dynamic allocation)
+- Only async-signal-safe functions: `write()`, `open()`, `close()`, `fsync()`
+
+---
+
+### 3. 📦 Conditional Compilation Guards
+
+Granular feature flags to reduce binary size by 50-70KB.
+
+**Key Benefits:**
+- 📉 Reduce binary size for embedded/IoT devices
+- ⚡ Faster compilation times
+- 🎯 Include only what you need
+- 💾 Lower memory footprint
+
+**Feature Flags:**
+
+| Flag | Disables | Size Saved |
+|------|----------|------------|
+| `XLOG_NO_ASYNC` | Asynchronous logging | ~15-20KB |
+| `XLOG_NO_JSON` | JSON/structured logging | ~10-15KB |
+| `XLOG_NO_NETWORK` | Network sinks (UDP, Syslog) | ~8-12KB |
+| `XLOG_NO_COLORS` | Color output | ~2-3KB |
+| `XLOG_NO_FILE_ROTATION` | Rotating file sinks | ~5-8KB |
+| `XLOG_NO_CONTEXT` | Log contexts (MDC/NDC) | ~3-5KB |
+| `XLOG_NO_FILTERS` | Log filtering | ~2-4KB |
+| `XLOG_MINIMAL` | All optional features | ~50-70KB |
+
+**Usage:**
+
+**CMake:**
+```cmake
+# Minimal build
+cmake -DXLOG_MINIMAL=ON ..
+
+# Custom build
+cmake -DXLOG_ENABLE_ASYNC=OFF -DXLOG_ENABLE_JSON=OFF ..
+```
+
+**Compile flags:**
+```bash
+g++ -DXLOG_NO_ASYNC -DXLOG_NO_JSON main.cpp -lxlog
+```
+
+**Feature detection:**
+```cpp
+#include <xlog/xlog_features.hpp>
+
+#if XLOG_HAS_ASYNC
+    auto logger = xlog::Logger::create_async("app");
+#else
+    auto logger = xlog::Logger::create_stdout_logger("app");
+#endif
+```
+
+---
+
+## Previous Features (retained from beta)
+
+#### **Compile-Time Log Elimination**
 
 New preprocessor macros that completely remove debug/trace logs in release builds:
 
@@ -74,11 +219,27 @@ logger->add_filter(composite);
 
 ## 📁 New Files
 
+### Added in v1.0.4
+- `include/xlog/xlog_features.hpp` - Feature flag definitions
+- `include/xlog/sinks/signal_safe_sink.hpp` - Signal-safe sink header
+- `src/sinks/signal_safe_sink.cpp` - Signal-safe sink implementation
+- `examples/config_file_example.cpp` - Configuration file usage demo
+- `examples/signal_safe_example.cpp` - Crash handler demo
+- `examples/minimal_build_example.cpp` - Feature flag demo
+
+### Enhanced in v1.0.4
+- `include/xlog/config.hpp` - Added ConfigLoader class
+- `src/config.cpp` - JSON parsing and logger creation
+- `CMakeLists.txt` - Feature flags and conditional compilation
+- `include/xlog/logger.hpp` - Feature guards
+- `include/xlog/xlog.hpp` - Feature guards
+- `README.md` - v1.0.4 documentation
+
+### From previous beta
 - `include/xlog/log_filter.hpp` - Filter interface and implementations
 - `src/log_filter.cpp` - Filter implementation logic
 - `include/xlog/log_macros.hpp` - Zero-cost logging macros
 - `examples/conditional_logging.cpp` - Comprehensive usage examples
-- `docs/notes/v1.0.4.md` - This release notes file
 
 ## 🔧 API Additions
 

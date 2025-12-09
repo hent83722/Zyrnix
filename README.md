@@ -52,9 +52,12 @@ I appreciate you giving this project a ⭐ :)
 </td>
 <td width="50%">
 
-### Advanced Features
+### Advanced Features (v1.0.4)
 - ✅ **Structured JSON logging** for cloud platforms
 - ✅ **Log contexts (MDC/NDC)** for request tracking
+- ✅ **Configuration files** - JSON config without recompiling
+- ✅ **Signal-safe logging** - Crash handler support
+- ✅ **Conditional compilation** - Reduce binary size 50-70KB
 - ✅ Rotating, daily, and size-based file sinks
 - ✅ Network sinks (UDP, Syslog)
 - ✅ Custom formatters and sinks
@@ -311,6 +314,111 @@ void handle_request(const HttpRequest& req) {
 
 ---
 
+## 🆕 What's New in v1.0.4
+
+### 📄 Configuration File Support
+
+Load logger configurations from JSON files without recompiling:
+
+```cpp
+#include <xlog/config.hpp>
+
+// Load from JSON file
+xlog::ConfigLoader::load_from_json("config.json");
+auto loggers = xlog::ConfigLoader::create_loggers();
+
+// Use configured loggers
+auto app_logger = loggers["app"];
+app_logger->info("Configuration loaded dynamically!");
+```
+
+**Example config.json:**
+```json
+{
+  "loggers": [
+    {
+      "name": "app",
+      "level": "info",
+      "async": true,
+      "sinks": [
+        {"type": "stdout"},
+        {"type": "file", "path": "/var/log/app.log"},
+        {"type": "rotating", "path": "app.log", "max_size": 10485760, "max_files": 5}
+      ]
+    }
+  ]
+}
+```
+
+**Benefits:**
+- 🔄 Change log levels without recompiling
+- 🎯 Different configs for dev/staging/production
+- 📊 Dynamic A/B testing of logging strategies
+
+### 🚨 Signal-Safe Logging for Crash Handlers
+
+Log from signal handlers (SIGSEGV, SIGABRT, etc.) safely:
+
+```cpp
+#include <xlog/sinks/signal_safe_sink.hpp>
+
+// Set up crash logger
+auto crash_sink = std::make_shared<xlog::SignalSafeSink>("crash.log");
+auto crash_logger = std::make_shared<xlog::Logger>("crash");
+crash_logger->add_sink(crash_sink);
+
+void crash_handler(int sig) {
+    // Safe to call from signal handler!
+    crash_logger->log(xlog::LogLevel::Critical, "Caught SIGSEGV");
+    crash_sink->flush();
+    _exit(1);
+}
+
+signal(SIGSEGV, crash_handler);
+```
+
+**Features:**
+- ✅ Uses only async-signal-safe POSIX functions
+- ✅ Lock-free ring buffer (no mutexes)
+- ✅ No malloc/free in signal handlers
+- ✅ Guaranteed crash log capture
+
+### 📦 Conditional Compilation for Binary Size
+
+Reduce binary size by 50-70KB by disabling unused features:
+
+```bash
+# Minimal build (smallest binary)
+cmake -DXLOG_MINIMAL=ON ..
+
+# Custom build (disable specific features)
+cmake -DXLOG_ENABLE_ASYNC=OFF -DXLOG_ENABLE_JSON=OFF ..
+
+# Or use compile flags
+g++ -DXLOG_NO_ASYNC -DXLOG_NO_JSON main.cpp -lxlog
+```
+
+**Feature flags:**
+- `XLOG_NO_ASYNC` - Disable async logging (~15-20KB saved)
+- `XLOG_NO_JSON` - Disable JSON/structured logging (~10-15KB)
+- `XLOG_NO_NETWORK` - Disable network sinks (~8-12KB)
+- `XLOG_NO_COLORS` - Disable color output (~2-3KB)
+- `XLOG_NO_FILE_ROTATION` - Disable rotating files (~5-8KB)
+- `XLOG_NO_CONTEXT` - Disable log contexts (~3-5KB)
+- `XLOG_NO_FILTERS` - Disable filtering (~2-4KB)
+- `XLOG_MINIMAL` - Disable all optional features (~50-70KB)
+
+**Feature detection in code:**
+```cpp
+#if XLOG_HAS_ASYNC
+    auto logger = xlog::Logger::create_async("app");
+#else
+    auto logger = xlog::Logger::create_stdout_logger("app");
+#endif
+```
+
+---
+
 ## 🔌 Network Sinks & Production Integration
 
 Integrate XLog into production systems with multiple output destinations:
@@ -390,6 +498,9 @@ Explore complete working examples in the `examples/` directory:
 | `basic_logging.cpp` | Simple console logging |
 | `async_logging.cpp` | High-performance async logging |
 | `multi_sink_example.cpp` | Write to multiple destinations |
+| **`config_file_example.cpp`** | **v1.0.4: Load configs from JSON** |
+| **`signal_safe_example.cpp`** | **v1.0.4: Crash handler logging** |
+| **`minimal_build_example.cpp`** | **v1.0.4: Feature flags & binary size** |
 | `rotating_logs.cpp` | Rotating file logs for production |
 | `structured_json_example.cpp` | JSON logging for cloud platforms |
 | `context_logging.cpp` | Request tracking with MDC |

@@ -1,8 +1,15 @@
 #pragma once
+
+// Include feature flags first
+#include "xlog_features.hpp"
+
 #include <string>
 #include "logger.hpp"
 #include "config.hpp"
+
+#ifndef XLOG_NO_CONTEXT
 #include "log_context.hpp"
+#endif
 
 namespace xlog {
 
