@@ -8,7 +8,7 @@ I appreciate you giving this project a ⭐ :)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![Version](https://img.shields.io/badge/version-1.0.4-brightgreen.svg)](https://github.com/hent83722/xlog/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-brightgreen.svg)](https://github.com/hent83722/xlog/releases)
 [![CI](https://img.shields.io/badge/CI-passing-success.svg)](https://github.com/hent83722/xlog/actions)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 
@@ -62,6 +62,19 @@ I appreciate you giving this project a ⭐ :)
 - ✅ Network sinks (UDP, Syslog)
 - ✅ Custom formatters and sinks
 - ✅ Color-coded console output
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+### 🆕 Enterprise Features (v1.1.0)
+- 🚀 **Rate Limiting & Sampling** - Prevent log flooding with token bucket algorithm
+- 💾 **Compression Support** - Save 70-90% disk space with gzip/zstd compression
+- ☁️ **Cloud Sinks** - Native AWS CloudWatch & Azure Monitor integration
+- 📊 **Metrics & Observability** - Built-in telemetry with Prometheus export
+
+[📖 See v1.1.0 Features Documentation →](docs/v1.1.0_FEATURES.md)
 
 </td>
 </tr>
@@ -415,6 +428,186 @@ g++ -DXLOG_NO_ASYNC -DXLOG_NO_JSON main.cpp -lxlog
 #else
     auto logger = xlog::Logger::create_stdout_logger("app");
 #endif
+```
+
+---
+
+## 🚀 What's New in v1.1.0
+
+XLog v1.1.0 introduces four major enterprise-grade features designed for production environments:
+
+### 1. 🎯 Rate Limiting & Sampling
+
+**Prevent log flooding during incidents:**
+
+```cpp
+#include <xlog/rate_limiter.hpp>
+
+// Token bucket: 100 messages/sec, burst capacity 200
+xlog::RateLimiter limiter(100, 200);
+
+for (int i = 0; i < 10000; ++i) {
+    if (limiter.try_log()) {
+        logger->error("Database connection failed");
+    }
+}
+
+std::cout << "Dropped: " << limiter.dropped_count() << " messages\n";
+```
+
+**Benefits:**
+- 🛡️ Prevent disk exhaustion during error storms
+- ⚡ Token bucket algorithm allows controlled bursts
+- 📊 Sampling support (log every Nth message)
+- 📈 Built-in statistics tracking
+
+### 2. 💾 Compression Support
+
+**Save 70-90% disk space automatically:**
+
+```cpp
+#include <xlog/sinks/compressed_file_sink.hpp>
+
+xlog::CompressionOptions options;
+options.type = xlog::CompressionType::Gzip;
+options.level = 6;
+options.compress_on_rotate = true;
+
+auto sink = std::make_shared<xlog::CompressedFileSink>(
+    "app.log",
+    10 * 1024 * 1024,  // 10 MB per file
+    30,                // Keep 30 files
+    options
+);
+
+auto logger = std::make_shared<xlog::Logger>("app");
+logger->add_sink(sink);
+
+// Check compression stats
+auto stats = sink->get_compression_stats();
+std::cout << "Compression ratio: " << stats.compression_ratio << "x\n";
+std::cout << "Space saved: " << (100.0 * (stats.original_bytes - stats.compressed_bytes) / stats.original_bytes) << "%\n";
+```
+
+**Features:**
+- 🗜️ Gzip and Zstd compression support
+- 🔄 Automatic compress-on-rotate
+- ⚙️ Configurable compression levels (1-9 for gzip, 1-22 for zstd)
+- 📊 Compression statistics tracking
+
+### 3. ☁️ Cloud Sinks (AWS CloudWatch, Azure Monitor)
+
+**Native cloud logging integration:**
+
+```cpp
+#include <xlog/sinks/cloud_sinks.hpp>
+
+// AWS CloudWatch
+xlog::CloudWatchSink::Config aws_config;
+aws_config.region = "us-east-1";
+aws_config.log_group_name = "/aws/myapp";
+aws_config.log_stream_name = "instance-01";
+aws_config.batch_size = 100;
+aws_config.batch_timeout_ms = 5000;
+
+auto cloudwatch = std::make_shared<xlog::CloudWatchSink>(aws_config);
+
+// Azure Monitor
+xlog::AzureMonitorSink::Config azure_config;
+azure_config.instrumentation_key = "your-key";
+azure_config.cloud_role_name = "my-service";
+azure_config.batch_size = 100;
+
+auto azure = std::make_shared<xlog::AzureMonitorSink>(azure_config);
+
+auto logger = std::make_shared<xlog::Logger>("app");
+logger->add_sink(cloudwatch);
+logger->add_sink(azure);
+
+logger->info("Logged to both AWS and Azure!");
+
+// Monitor statistics
+auto stats = cloudwatch->get_stats();
+std::cout << "Messages sent: " << stats.messages_sent << "\n";
+std::cout << "Batches sent: " << stats.batches_sent << "\n";
+```
+
+**Features:**
+- 🌩️ AWS CloudWatch Logs integration
+- ☁️ Azure Monitor / Application Insights support
+- 📦 Automatic batching (reduce API costs)
+- 🔁 Retry logic with exponential backoff
+- ⚡ Async operation (non-blocking)
+- 📊 Statistics tracking
+
+### 4. 📊 Metrics & Observability
+
+**Built-in telemetry for logging infrastructure:**
+
+```cpp
+#include <xlog/log_metrics.hpp>
+
+// Get metrics from global registry
+auto& registry = xlog::MetricsRegistry::instance();
+auto metrics = registry.get_logger_metrics("app");
+
+// Metrics are automatically tracked during logging
+// Get snapshot
+auto snapshot = metrics->get_snapshot();
+std::cout << "Messages/sec: " << snapshot.messages_per_second << "\n";
+std::cout << "Avg latency: " << snapshot.avg_log_latency_us << " µs\n";
+std::cout << "Queue depth: " << snapshot.current_queue_depth << "\n";
+std::cout << "Dropped: " << snapshot.messages_dropped << "\n";
+
+// Export for Prometheus
+std::string prometheus = registry.export_all_prometheus();
+std::cout << prometheus;
+
+// Or export as JSON
+std::string json = registry.export_all_json();
+```
+
+**Metrics Tracked:**
+- 📈 Messages per second
+- ⏱️ Log latency (average, max)
+- 📉 Dropped message count
+- 🗄️ Queue depth (async logging)
+- ❌ Error counts
+- 💾 Per-sink statistics (bytes written, write latency)
+
+**Prometheus Export:**
+```
+xlog_messages_logged_total 125000
+xlog_messages_dropped_total 0
+xlog_messages_per_second 1234.56
+xlog_log_latency_us_avg 12.34
+xlog_queue_depth 42
+```
+
+**Perfect for:**
+- Grafana dashboards
+- Prometheus monitoring
+- Health checks and alerting
+- Performance analysis
+
+### 📚 Complete Documentation
+
+See [v1.1.0 Features Documentation](docs/v1.1.0_FEATURES.md) for:
+- Complete API reference
+- Performance characteristics
+- Best practices
+- Production deployment guides
+- Troubleshooting
+
+### 🎯 Example Programs
+
+```bash
+# Run examples
+cd build
+./examples/rate_limiting_example
+./examples/compression_example
+./examples/cloud_sinks_example
+./examples/metrics_example
 ```
 
 ---
