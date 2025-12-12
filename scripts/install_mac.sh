@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# XLog Installation Script for Linux
+# XLog Installation Script for macOS
 # Builds from source and installs system-wide
 #
 set -e
@@ -20,7 +20,7 @@ echo " ██╔██╗ ██║     ██║   ██║██║   ██�
 echo "██╔╝ ██╗███████╗╚██████╔╝╚██████╔╝"
 echo "╚═╝  ╚═╝╚══════╝ ╚═════╝  ╚═════╝ "
 echo -e "${NC}"
-echo -e "${GREEN}XLog Installation Script for Linux${NC}"
+echo -e "${GREEN}XLog Installation Script for macOS${NC}"
 echo "=========================================="
 
 # Get the directory where this script is located
@@ -33,18 +33,15 @@ cd "$PROJECT_DIR"
 echo -e "${YELLOW}Checking dependencies...${NC}"
 
 if ! command -v cmake &> /dev/null; then
-    echo -e "${RED}Error: cmake is not installed. Please install cmake first.${NC}"
-    echo "  Ubuntu/Debian: sudo apt install cmake"
-    echo "  Fedora/RHEL:   sudo dnf install cmake"
-    echo "  Arch Linux:    sudo pacman -S cmake"
+    echo -e "${RED}Error: cmake is not installed.${NC}"
+    echo "Install with Homebrew: brew install cmake"
+    echo "Or download from: https://cmake.org/download/"
     exit 1
 fi
 
-if ! command -v g++ &> /dev/null && ! command -v clang++ &> /dev/null; then
-    echo -e "${RED}Error: No C++ compiler found. Please install g++ or clang++.${NC}"
-    echo "  Ubuntu/Debian: sudo apt install build-essential"
-    echo "  Fedora/RHEL:   sudo dnf install gcc-c++"
-    echo "  Arch Linux:    sudo pacman -S base-devel"
+if ! command -v clang++ &> /dev/null; then
+    echo -e "${RED}Error: Xcode Command Line Tools not installed.${NC}"
+    echo "Install with: xcode-select --install"
     exit 1
 fi
 
@@ -53,7 +50,7 @@ echo -e "${GREEN}All dependencies found!${NC}"
 # Parse command line arguments
 BUILD_TYPE="Release"
 INSTALL_PREFIX="/usr/local"
-PARALLEL_JOBS=$(nproc 2>/dev/null || echo 4)
+PARALLEL_JOBS=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -69,11 +66,17 @@ while [[ $# -gt 0 ]]; do
             PARALLEL_JOBS="${1#*=}"
             shift
             ;;
+        --homebrew)
+            # Use Homebrew's prefix for consistency
+            INSTALL_PREFIX="$(brew --prefix 2>/dev/null || echo /usr/local)"
+            shift
+            ;;
         --help)
             echo "Usage: $0 [options]"
             echo "Options:"
             echo "  --debug          Build in debug mode (default: Release)"
             echo "  --prefix=PATH    Installation prefix (default: /usr/local)"
+            echo "  --homebrew       Use Homebrew's prefix for installation"
             echo "  --jobs=N         Number of parallel build jobs (default: auto)"
             echo "  --help           Show this help message"
             exit 0
@@ -100,7 +103,8 @@ cd build
 echo -e "${YELLOW}Configuring with CMake...${NC}"
 cmake .. \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-    -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX"
+    -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="10.15"
 
 # Build
 echo -e "${YELLOW}Building XLog...${NC}"
