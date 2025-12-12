@@ -28,6 +28,9 @@ CompressedFileSink::CompressedFileSink(
     , files_compressed_(0)
     , original_bytes_(0)
     , compressed_bytes_(0)
+    , current_level_(options.level)
+    , last_compression_duration_us_(0)
+    , compression_count_(0)
 {
     file_.open(base_filename_, std::ios::app);
     if (file_.is_open()) {
@@ -86,16 +89,29 @@ void CompressedFileSink::rotate() {
         std::string dest = source + get_compressed_extension();
         
         size_t original_size = CompressionUtils::get_file_size(source);
+        
+        auto start = std::chrono::steady_clock::now();
         compress_file(source, dest);
+        auto end = std::chrono::steady_clock::now();
+        
+        last_compression_time_ = end;
+        last_compression_duration_us_ = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        compression_count_++;
+        
         size_t compressed_size = CompressionUtils::get_file_size(dest);
         
         if (compressed_size > 0) {
-            std::remove(source.c_str()); // Remove uncompressed file
+            std::remove(source.c_str()); 
             
             std::lock_guard<std::mutex> stats_lock(stats_mutex_);
             files_compressed_++;
             original_bytes_ += original_size;
             compressed_bytes_ += compressed_size;
+            
+
+            if (options_.auto_tune) {
+                update_compression_level();
+            }
         }
     }
 
@@ -293,4 +309,66 @@ bool CompressionUtils::is_zstd_available() {
 #endif
 }
 
-} // namespace xlog
+void CompressedFileSink::enable_auto_tune(bool enable) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    options_.auto_tune = enable;
+    if (enable) {
+        current_level_ = options_.level;
+    }
+}
+
+void CompressedFileSink::update_compression_level() {
+    if (compression_count_ < 3) {
+        return;
+    }
+    
+    int new_level = calculate_optimal_level();
+    if (new_level != current_level_) {
+        current_level_ = new_level;
+        options_.level = new_level;
+    }
+}
+
+int CompressedFileSink::calculate_optimal_level() const {
+    double avg_ratio = (compressed_bytes_ > 0) 
+        ? static_cast<double>(original_bytes_) / static_cast<double>(compressed_bytes_)
+        : 1.0;
+    
+    double speed = calculate_compression_speed();
+    
+    const double GOOD_RATIO = 3.0;// 3x compression is good
+    const double GREAT_RATIO = 5.0;// 5x compression is great
+    const double SLOW_SPEED = 10.0e6;// 10 MB/s is slow
+    const double FAST_SPEED = 50.0e6;// 50 MB/s is fast
+    
+    int min_level = (options_.type == CompressionType::Gzip) ? 1 : 1;
+    int max_level = (options_.type == CompressionType::Gzip) ? 9 : 22;
+    
+    
+    if (speed < SLOW_SPEED && avg_ratio >= GOOD_RATIO) {
+        return std::max(min_level, current_level_ - 1);
+    } else if (speed > FAST_SPEED && avg_ratio < GOOD_RATIO) {
+        return std::min(max_level, current_level_ + 1);
+    } else if (avg_ratio >= GREAT_RATIO && current_level_ > min_level + 1) {
+ 
+        return current_level_ - 1;
+    }
+    
+    return current_level_;
+}
+
+double CompressedFileSink::calculate_compression_speed() const {
+    if (last_compression_duration_us_ == 0 || original_bytes_ == 0) {
+        return 0.0;
+    }
+    
+
+    double avg_bytes = static_cast<double>(original_bytes_) / compression_count_;
+    
+
+    double bytes_per_second = (avg_bytes * 1e6) / last_compression_duration_us_;
+    
+    return bytes_per_second;
+}
+
+} 

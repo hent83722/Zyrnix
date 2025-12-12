@@ -5,6 +5,7 @@
 #include <mutex>
 #include <memory>
 #include <functional>
+#include <atomic>
 #include "log_sink.hpp"
 #include "log_level.hpp"
 #include "log_record.hpp"
@@ -33,6 +34,11 @@ public:
     void set_level(LogLevel level);
     LogLevel get_level() const;
     
+    using LogLevelChangeCallback = std::function<void(LogLevel old_level, LogLevel new_level)>;
+    void set_level_dynamic(LogLevel level);  // Thread-safe atomic level change
+    void register_level_change_callback(LogLevelChangeCallback callback);
+    void clear_level_change_callbacks();
+    
 #ifndef XLOG_NO_FILTERS
     void add_filter(std::shared_ptr<LogFilter> filter);
     void clear_filters();
@@ -55,7 +61,8 @@ private:
     std::vector<std::shared_ptr<LogFilter>> filters_;
     std::function<bool(const LogRecord&)> filter_func_;
 #endif
-    LogLevel min_level_;
+    std::atomic<LogLevel> min_level_;
+    std::vector<LogLevelChangeCallback> level_change_callbacks_;
     std::mutex mtx;
 };
 

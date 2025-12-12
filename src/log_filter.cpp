@@ -56,4 +56,29 @@ bool CompositeFilter::should_log(const LogRecord& record) const {
     }
 }
 
-} // namespace xlog
+RegexFilter::RegexFilter(const std::string& pattern, bool invert)
+    : pattern_str_(pattern), regex_(pattern), invert_(invert) {}
+
+RegexFilter::RegexFilter(const std::string& field_name, const std::string& pattern, bool invert)
+    : pattern_str_(pattern), regex_(pattern), field_name_(field_name), invert_(invert) {}
+
+bool RegexFilter::should_log(const LogRecord& record) const {
+    std::string target;
+    
+    if (field_name_.empty()) {
+        target = record.message;
+    } else {
+        auto context = LogContext::get_all();
+        auto it = context.find(field_name_);
+        if (it != context.end()) {
+            target = it->second;
+        } else {
+            target = record.get_field(field_name_);
+        }
+    }
+    
+    bool matches = std::regex_search(target, regex_);
+    return invert_ ? !matches : matches;
+}
+
+} 

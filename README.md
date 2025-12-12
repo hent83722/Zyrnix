@@ -8,7 +8,7 @@ I appreciate you giving this project a ⭐ :)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![Version](https://img.shields.io/badge/version-1.1.0-brightgreen.svg)](https://github.com/hent83722/xlog/releases)
+[![Version](https://img.shields.io/badge/version-1.1.1--beta.1-brightgreen.svg)](https://github.com/hent83722/xlog/releases)
 [![CI](https://img.shields.io/badge/CI-passing-success.svg)](https://github.com/hent83722/xlog/actions)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 

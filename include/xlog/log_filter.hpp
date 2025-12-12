@@ -2,6 +2,7 @@
 #include <string>
 #include <functional>
 #include <memory>
+#include <regex>
 #include "log_level.hpp"
 #include "log_record.hpp"
 
@@ -55,4 +56,22 @@ private:
     std::vector<std::shared_ptr<LogFilter>> filters_;
 };
 
-} // namespace xlog
+
+class RegexFilter : public LogFilter {
+public:
+    explicit RegexFilter(const std::string& pattern, bool invert = false);
+    
+    RegexFilter(const std::string& field_name, const std::string& pattern, bool invert = false);
+    
+    bool should_log(const LogRecord& record) const override;
+    
+    std::string pattern() const { return pattern_str_; }
+    
+private:
+    std::string pattern_str_;
+    std::regex regex_;
+    std::string field_name_;  
+    bool invert_; 
+};
+
+} 

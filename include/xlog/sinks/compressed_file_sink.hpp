@@ -17,8 +17,9 @@ enum class CompressionType {
 
 struct CompressionOptions {
     CompressionType type = CompressionType::Gzip;
-    int level = 6; // Default compression level (balance speed/ratio)
-    bool compress_on_rotate = true; // Compress when rotating files
+    int level = 6; 
+    bool compress_on_rotate = true; 
+    bool auto_tune = false;
 };
 
 class CompressedFileSink : public LogSink {
@@ -45,6 +46,11 @@ public:
     };
 
     CompressionStats get_compression_stats() const;
+    
+    // New in v1.1.1: Auto-tune compression
+    void enable_auto_tune(bool enable = true);
+    bool is_auto_tune_enabled() const { return options_.auto_tune; }
+    int get_current_compression_level() const { return current_level_; }
 
 private:
     void rotate();
@@ -53,6 +59,11 @@ private:
     bool compress_zstd(const std::string& source, const std::string& dest);
     std::string get_rotated_filename(size_t index) const;
     std::string get_compressed_extension() const;
+    
+    // Auto-tune helpers
+    void update_compression_level();
+    int calculate_optimal_level() const;
+    double calculate_compression_speed() const; // bytes/second
 
     std::string base_filename_;
     size_t max_size_;
@@ -66,6 +77,12 @@ private:
     uint64_t files_compressed_;
     uint64_t original_bytes_;
     uint64_t compressed_bytes_;
+    
+    // Auto-tune state
+    int current_level_;
+    std::chrono::steady_clock::time_point last_compression_time_;
+    uint64_t last_compression_duration_us_;
+    size_t compression_count_;
     
     std::mutex mutex_;
 };

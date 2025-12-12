@@ -22,11 +22,32 @@ void Logger::clear_sinks() {
 }
 
 void Logger::set_level(LogLevel level) {
-    min_level_ = level;
+    min_level_.store(level, std::memory_order_relaxed);
 }
 
 LogLevel Logger::get_level() const {
-    return min_level_;
+    return min_level_.load(std::memory_order_relaxed);
+}
+
+void Logger::set_level_dynamic(LogLevel level) {
+    LogLevel old_level = min_level_.exchange(level, std::memory_order_release);
+    
+    if (old_level != level) {
+        std::lock_guard<std::mutex> lock(mtx);
+        for (const auto& callback : level_change_callbacks_) {
+            callback(old_level, level);
+        }
+    }
+}
+
+void Logger::register_level_change_callback(LogLevelChangeCallback callback) {
+    std::lock_guard<std::mutex> lock(mtx);
+    level_change_callbacks_.push_back(std::move(callback));
+}
+
+void Logger::clear_level_change_callbacks() {
+    std::lock_guard<std::mutex> lock(mtx);
+    level_change_callbacks_.clear();
 }
 
 void Logger::add_filter(std::shared_ptr<LogFilter> filter) {
@@ -46,7 +67,7 @@ void Logger::set_filter_func(std::function<bool(const LogRecord&)> func) {
 }
 
 bool Logger::should_log(const LogRecord& record) const {
-    if (record.level < min_level_) {
+    if (record.level < min_level_.load(std::memory_order_acquire)) {
         return false;
     }
     
