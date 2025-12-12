@@ -35,7 +35,7 @@ public:
     LogLevel get_level() const;
     
     using LogLevelChangeCallback = std::function<void(LogLevel old_level, LogLevel new_level)>;
-    void set_level_dynamic(LogLevel level);  // Thread-safe atomic level change
+    void set_level_dynamic(LogLevel level);  
     void register_level_change_callback(LogLevelChangeCallback callback);
     void clear_level_change_callbacks();
     

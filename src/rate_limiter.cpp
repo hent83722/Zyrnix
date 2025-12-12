@@ -62,7 +62,7 @@ SamplingLimiter::SamplingLimiter(size_t sample_rate)
 
 bool SamplingLimiter::should_log() {
     if (!is_enabled()) {
-        return true; // Sampling disabled
+        return true;
     }
 
     uint64_t count = counter_.fetch_add(1, std::memory_order_relaxed);

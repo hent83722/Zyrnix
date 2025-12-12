@@ -22,11 +22,11 @@ public:
         std::string access_key_id;
         std::string secret_access_key;
         
-        size_t batch_size = 100;          // Max messages per batch
-        size_t batch_timeout_ms = 5000;   // Max time to wait before sending batch
-        size_t max_retries = 3;           // Retry attempts on failure
-        size_t retry_delay_ms = 1000;     // Initial retry delay (exponential backoff)
-        size_t max_queue_size = 10000;    // Max messages in queue
+        size_t batch_size = 100; // Max messages per batch
+        size_t batch_timeout_ms = 5000; // Max time to wait before sending batch
+        size_t max_retries = 3; // Retry attempts on failure
+        size_t retry_delay_ms = 1000; // Initial retry delay (exponential backoff)
+        size_t max_queue_size = 10000; // Max messages in queue
     };
 
     explicit CloudWatchSink(const Config& config);

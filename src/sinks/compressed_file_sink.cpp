@@ -133,7 +133,7 @@ void CompressedFileSink::compress_file(const std::string& source_path, const std
             break;
     }
     
-    (void)success; // Suppress unused variable warning
+    (void)success; 
 }
 
 bool CompressedFileSink::compress_gzip(const std::string& source, const std::string& dest) {

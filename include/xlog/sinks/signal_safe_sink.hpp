@@ -72,16 +72,16 @@ public:
     bool is_ready() const { return fd_ >= 0; }
 
 private:
-    int fd_;  // File descriptor (safer than FILE* in signal handlers)
+    int fd_; 
     
-    // Lock-free ring buffer
-    static constexpr size_t MAX_BUFFER_SIZE = 1048576; // 1MB max
+
+    static constexpr size_t MAX_BUFFER_SIZE = 1048576;
     std::array<char, MAX_BUFFER_SIZE> buffer_;
     std::atomic<size_t> write_pos_{0};
     std::atomic<size_t> read_pos_{0};
     size_t capacity_;
     
-    // Helper functions (all async-signal-safe)
+
     void write_to_buffer(const char* data, size_t len);
     void flush_buffer();
     static void safe_write(int fd, const char* data, size_t len);

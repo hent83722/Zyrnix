@@ -24,11 +24,11 @@ public:
 private:
     void refill_tokens();
 
-    size_t max_tokens_;                    // Maximum tokens (burst capacity)
-    size_t refill_rate_;                   // Tokens added per second
-    std::atomic<double> tokens_;           // Current available tokens
+    size_t max_tokens_;                  
+    size_t refill_rate_;                  
+    std::atomic<double> tokens_;          
     std::chrono::steady_clock::time_point last_refill_;
-    std::atomic<uint64_t> dropped_count_;  // Total dropped messages
+    std::atomic<uint64_t> dropped_count_; 
     mutable std::mutex mutex_;
 };
 

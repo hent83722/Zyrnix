@@ -1,6 +1,5 @@
 #pragma once
 
-// Include feature flags first
 #include "xlog_features.hpp"
 
 #include <string>

@@ -10,8 +10,7 @@ namespace xlog {
 SignalSafeSink::SignalSafeSink(const std::string& path, size_t buffer_size) 
     : fd_(-1), capacity_(std::min(buffer_size, MAX_BUFFER_SIZE)) {
     
-    // Open file with O_APPEND and O_CREAT flags
-    // Using open() instead of fopen() because it's async-signal-safe
+
     fd_ = ::open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
 }
 
@@ -27,8 +26,7 @@ void SignalSafeSink::log(const std::string& name, LogLevel level, const std::str
         return;
     }
     
-    // Format message in a signal-safe way (no malloc, no sprintf)
-    // Simple format: [LEVEL] message\n
+
     
     const char* level_str;
     switch (level) {
@@ -41,16 +39,16 @@ void SignalSafeSink::log(const std::string& name, LogLevel level, const std::str
         default:                 level_str = "[UNKNOWN] "; break;
     }
     
-    // Write level prefix
+ 
     write_to_buffer(level_str, safe_strlen(level_str));
     
-    // Write message
+ 
     write_to_buffer(message.c_str(), message.length());
     
-    // Write newline
+
     write_to_buffer("\n", 1);
     
-    // Try to flush if buffer is getting full
+
     size_t current_size = write_pos_.load(std::memory_order_relaxed) - read_pos_.load(std::memory_order_relaxed);
     if (current_size > capacity_ / 2) {
         flush_buffer();
@@ -60,7 +58,7 @@ void SignalSafeSink::log(const std::string& name, LogLevel level, const std::str
 void SignalSafeSink::flush() {
     flush_buffer();
     if (fd_ >= 0) {
-        ::fsync(fd_);  // async-signal-safe
+        ::fsync(fd_); 
     }
 }
 
@@ -71,18 +69,18 @@ void SignalSafeSink::write_to_buffer(const char* data, size_t len) {
     size_t available = capacity_ - (write_pos - read_pos);
     
     if (len > available) {
-        // Buffer full - drop message or flush
+
         flush_buffer();
         write_pos = write_pos_.load(std::memory_order_relaxed);
         read_pos = read_pos_.load(std::memory_order_acquire);
         available = capacity_ - (write_pos - read_pos);
         
         if (len > available) {
-            return; // Still not enough space, drop message
+            return; 
         }
     }
     
-    // Write to circular buffer
+
     for (size_t i = 0; i < len; ++i) {
         size_t idx = (write_pos + i) % capacity_;
         buffer_[idx] = data[i];
@@ -100,20 +98,20 @@ void SignalSafeSink::flush_buffer() {
     size_t read_pos = read_pos_.load(std::memory_order_acquire);
     
     if (write_pos == read_pos) {
-        return; // Nothing to flush
+        return; 
     }
     
-    // Write all data from ring buffer to file
+
     while (read_pos < write_pos) {
         size_t idx = read_pos % capacity_;
         size_t end_idx = write_pos % capacity_;
         
         size_t chunk_size;
         if (write_pos - read_pos <= capacity_ && idx < end_idx) {
-            // Contiguous chunk
+     
             chunk_size = end_idx - idx;
         } else {
-            // Write until end of buffer
+   
             chunk_size = capacity_ - idx;
         }
         
@@ -129,7 +127,7 @@ void SignalSafeSink::safe_write(int fd, const char* data, size_t len) {
     while (written < len) {
         ssize_t ret = ::write(fd, data + written, len - written);
         if (ret < 0) {
-            break; // Error - can't do much in signal handler
+            break; 
         }
         written += ret;
     }

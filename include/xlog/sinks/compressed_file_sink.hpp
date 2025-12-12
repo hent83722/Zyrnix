@@ -26,7 +26,7 @@ class CompressedFileSink : public LogSink {
 public:
     CompressedFileSink(
         const std::string& filename,
-        size_t max_size = 10 * 1024 * 1024, // 10 MB default
+        size_t max_size = 10 * 1024 * 1024, 
         size_t max_files = 5,
         const CompressionOptions& options = CompressionOptions{}
     );
@@ -42,12 +42,12 @@ public:
         uint64_t files_compressed;
         uint64_t original_bytes;
         uint64_t compressed_bytes;
-        double compression_ratio; // original / compressed
+        double compression_ratio; 
     };
 
     CompressionStats get_compression_stats() const;
     
-    // New in v1.1.1: Auto-tune compression
+    
     void enable_auto_tune(bool enable = true);
     bool is_auto_tune_enabled() const { return options_.auto_tune; }
     int get_current_compression_level() const { return current_level_; }
@@ -60,10 +60,10 @@ private:
     std::string get_rotated_filename(size_t index) const;
     std::string get_compressed_extension() const;
     
-    // Auto-tune helpers
+  
     void update_compression_level();
     int calculate_optimal_level() const;
-    double calculate_compression_speed() const; // bytes/second
+    double calculate_compression_speed() const; 
 
     std::string base_filename_;
     size_t max_size_;
@@ -78,7 +78,7 @@ private:
     uint64_t original_bytes_;
     uint64_t compressed_bytes_;
     
-    // Auto-tune state
+  
     int current_level_;
     std::chrono::steady_clock::time_point last_compression_time_;
     uint64_t last_compression_duration_us_;
