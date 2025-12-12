@@ -32,6 +32,8 @@ I appreciate you giving this project a ⭐ :)
 - 🌊 **Multiple sinks** - Write to console, files, syslog, network, or custom destinations
 - 🧪 **Battle-tested** - AddressSanitizer, ThreadSanitizer, UndefinedBehaviorSanitizer, and fuzz tested
 - 📦 **Easy integration** - Header-only or static library, minimal dependencies
+- 🏥 **Production-ready** - Health checks, dynamic config, and observability built-in
+- 🎚️ **Adaptive performance** - Auto-tuning compression and intelligent rate limiting
 
 ---
 
@@ -75,6 +77,19 @@ I appreciate you giving this project a ⭐ :)
 - 📊 **Metrics & Observability** - Built-in telemetry with Prometheus export
 
 [📖 See v1.1.0 Features Documentation →](docs/v1.1.0_FEATURES.md)
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+### 🔥 Latest Features (v1.1.1-beta.1)
+- 🎯 **Regex Log Filtering** - Pattern-based filtering with invert support
+- 🔄 **Dynamic Log Levels** - Thread-safe runtime level changes with callbacks
+- 🏥 **Health Check API** - Monitor logger health for SRE/DevOps integration
+- 🎚️ **Compression Auto-Tune** - Adaptive compression level optimization
+
+[📖 See v1.1.1 Release Notes →](docs/notes/RELEASE_NOTES_v1.1.1-beta.1.md)
 
 </td>
 </tr>
@@ -348,6 +363,86 @@ app_logger->info("Configuration loaded dynamically!");
 **Example config.json:**
 ```json
 {
+````
+
+---
+
+## 🔥 What's New in v1.1.1
+
+### 🎯 Regex-Based Log Filtering
+
+Filter logs using powerful regular expressions:
+
+```cpp
+#include <xlog/log_filter.hpp>
+
+auto logger = xlog::Logger::create_stdout_logger("app");
+
+// Only log messages containing ERROR or CRITICAL
+auto error_filter = std::make_shared<xlog::RegexFilter>("(ERROR|CRITICAL)");
+logger->add_filter(error_filter);
+
+// Exclude sensitive data (inverted match - logs everything EXCEPT matches)
+auto no_secrets = std::make_shared<xlog::RegexFilter>("(password|token|secret)", true);
+logger->add_filter(no_secrets);
+```
+
+### 🔄 Dynamic Log Level Changes
+
+Change log levels at runtime without restarting:
+
+```cpp
+auto logger = xlog::Logger::create_stdout_logger("app");
+
+// Register callback for level changes
+logger->register_level_change_callback([](LogLevel old_lvl, LogLevel new_lvl) {
+    std::cout << "Log level changed!" << std::endl;
+});
+
+// Thread-safe level change (great for config hot-reload)
+logger->set_level_dynamic(xlog::LogLevel::Debug);
+```
+
+### 🏥 Health Check API
+
+Monitor your logging infrastructure:
+
+```cpp
+#include <xlog/log_health.hpp>
+
+// Register logger for monitoring
+xlog::HealthRegistry::instance().register_logger("api", logger);
+
+// Check health (perfect for K8s probes)
+auto result = xlog::HealthRegistry::instance().check_logger("api");
+
+if (xlog::HealthChecker::is_healthy(result)) {
+    // All good!
+} else {
+    std::cerr << result.to_json() << std::endl;  // Export for monitoring
+}
+```
+
+### 🎚️ Compression Auto-Tune
+
+Automatic compression level optimization:
+
+```cpp
+#include <xlog/sinks/compressed_file_sink.hpp>
+
+xlog::CompressionOptions options;
+options.type = xlog::CompressionType::Gzip;
+options.auto_tune = true;  // Enable auto-tune!
+
+auto sink = std::make_shared<xlog::CompressedFileSink>(
+    "app.log", 10*1024*1024, 5, options
+);
+
+// Compression level adjusts automatically based on:
+// - Compression ratio achieved
+// - Compression speed
+std::cout << "Current level: " << sink->get_current_compression_level() << std::endl;
+```
   "loggers": [
     {
       "name": "app",
