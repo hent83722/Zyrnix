@@ -212,7 +212,7 @@ Installation scripts automate the build and system installation process. They ch
 <td>
 
 ```bash
-./scripts/install.sh
+./scripts/install_linux.sh
 ```
 </td>
 </tr>
@@ -260,7 +260,7 @@ scripts\install_windows.bat
 **Example with options:**
 ```bash
 # Linux/macOS - Install to custom location
-./scripts/install.sh --prefix=/opt/xlog --jobs=8
+./scripts/install_linux.sh --prefix=/opt/xlog --jobs=8
 
 # Windows PowerShell - Debug build to custom location
 .\scripts\install_windows.ps1 -BuildType Debug -InstallPrefix "C:\dev\xlog"
