@@ -208,7 +208,7 @@ Installation scripts automate the build and system installation process. They ch
 </tr>
 <tr>
 <td>🐧 Linux</td>
-<td><code>install.sh</code></td>
+<td><code>install_linux.sh</code></td>
 <td>
 
 ```bash
