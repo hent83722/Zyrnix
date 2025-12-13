@@ -93,7 +93,7 @@ void Logger::record_level_change(LogLevel old_level, LogLevel new_level, const s
     
     level_history_.push_back(entry);
     
-    // Trim history if needed
+
     while (level_history_.size() > max_history_entries_) {
         level_history_.pop_front();
     }
@@ -105,7 +105,7 @@ std::vector<LevelChangeEntry> Logger::get_level_history(size_t max_entries) cons
     std::vector<LevelChangeEntry> result;
     size_t count = std::min(max_entries, level_history_.size());
     
-    // Return most recent entries
+
     auto start = level_history_.end() - count;
     result.assign(start, level_history_.end());
     
@@ -120,8 +120,7 @@ void Logger::clear_level_history() {
 void Logger::set_max_history_entries(size_t max_entries) {
     std::lock_guard<std::mutex> lock(mtx);
     max_history_entries_ = max_entries;
-    
-    // Trim if needed
+
     while (level_history_.size() > max_history_entries_) {
         level_history_.pop_front();
     }
