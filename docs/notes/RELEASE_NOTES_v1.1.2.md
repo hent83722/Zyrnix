@@ -2,7 +2,7 @@
 
 **Release Date:** December 13, 2025  
 **Release Type:** Bug Fixes & Hardening  
-**Stability:** Stable
+**Stability:** Stable (beta)
 
 ---
 
@@ -205,7 +205,7 @@ All features have been validated with:
 
 ## 🔮 What's Next
 
-v1.2.0 will focus on new features:
+v1.1.3 will focus on new features:
 - Grafana Loki sink
 - PII/Sensitive data redaction
 - Hot-reload configuration
@@ -213,18 +213,9 @@ v1.2.0 will focus on new features:
 
 ---
 
-## 🙏 Acknowledgments
-
-Thanks to all users who reported issues with:
-- Log loss during shutdown
-- Windows international path support
-- Crash handler reliability
-
----
-
 ## 📝 Full Changelog
 
-See [CHANGELOG.md](../../CHANGELOG.md) for complete version history.
+See [CHANGELOG.md](docs/notes/RELEASE_NOTES_v1.1.2.md) for complete version history.
 
 ---
 
