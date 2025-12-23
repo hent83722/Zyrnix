@@ -1,5 +1,7 @@
 <div align="center">
 
+Happy holidays :)
+
 # 🚀 XLog
   
 ### Modern High-Performance C++ Logging Library
