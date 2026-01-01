@@ -94,30 +94,16 @@ private:
 class Logger {
 public:
     explicit Logger(std::string name);
-    
-    /**
-     * @brief Destructor - ensures graceful shutdown (v1.1.2)
-     */
     ~Logger();
 
     void add_sink(LogSinkPtr sink);
-    
-    /**
-     * @brief Add a named sink for easier management (v1.1.2)
-     * @param sink The sink to add
-     * @param name Name for the sink (used in remove_sink)
-     */
     void add_sink(LogSinkPtr sink, const std::string& name);
-    
     void clear_sinks();
-    
-    /**
-     * @brief Thread-safe sink removal without blocking writers (v1.1.2)
-     * @param name Name of the sink to remove
-     * @param wait_for_completion If true, waits for active writes to complete
-     * @return true if sink was found and removed
-     */
     bool remove_sink(const std::string& name, bool wait_for_completion = true);
+
+    // PII/Sensitive data redaction
+    void set_redact_patterns(const std::vector<std::string>& patterns);
+    void clear_redact_patterns();
     
     /**
      * @brief Remove sink by index (v1.1.2)
@@ -180,6 +166,7 @@ public:
     std::string name;
 
 private:
+    std::vector<std::string> redact_patterns_;
     bool should_log(const LogRecord& record) const;
     void check_temporary_level_expiry();
     void record_level_change(LogLevel old_level, LogLevel new_level, const std::string& reason);

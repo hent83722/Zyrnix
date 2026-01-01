@@ -14,6 +14,16 @@
 
 namespace xlog {
 
+void Logger::set_redact_patterns(const std::vector<std::string>& patterns) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    redact_patterns_ = patterns;
+}
+
+void Logger::clear_redact_patterns() {
+    std::lock_guard<std::mutex> lock(mtx_);
+    redact_patterns_.clear();
+}
+
 Logger::Logger(std::string n) 
     : name(std::move(n)), min_level_(LogLevel::Trace) {
     temp_level_.active = false;
@@ -366,38 +376,32 @@ void Logger::log(LogLevel level, const std::string& message) {
     LogRecord record;
     record.logger_name = name;
     record.level = level;
-    record.message = message;
-    record.timestamp = std::chrono::system_clock::now();
-    
-
+    std::string msg_to_log = message;
     {
         std::lock_guard<std::mutex> lock(mtx_);
         if (!should_log(record)) {
             return;
         }
+        if (!redact_patterns_.empty()) {
+            msg_to_log = Formatter::redact(message, redact_patterns_);
+        }
     }
-    
 
     std::shared_lock<std::shared_mutex> sinks_lock(sinks_mtx_);
-    
     for (size_t i = 0; i < sink_entries_.size(); ++i) {
         auto& entry = sink_entries_[i];
-
         if (entry->marked_for_removal.load(std::memory_order_acquire)) {
             continue;
         }
-        
-
         auto override_it = sink_level_overrides_.find(i);
         if (override_it != sink_level_overrides_.end()) {
             if (level < override_it->second) {
                 continue;
             }
         }
-        
         SinkGuard guard(entry);
         if (guard) {
-            guard->log(name, level, message);
+            guard->log(name, level, msg_to_log);
         }
     }
 }

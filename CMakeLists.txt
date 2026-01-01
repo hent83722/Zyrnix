@@ -45,6 +45,11 @@ file(GLOB XLOG_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/sinks/*.cpp"
 )
 
+list(APPEND XLOG_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/config_watcher.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/hot_reload_manager.cpp"
+)
+
 
 if(XLOG_ENABLE_ASYNC)
     file(GLOB ASYNC_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/async/*.cpp")
@@ -116,7 +121,10 @@ endif()
 
 if(NOT XLOG_ENABLE_CLOUD_SINKS)
     list(REMOVE_ITEM XLOG_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sinks/cloud_sinks.cpp")
+    list(REMOVE_ITEM XLOG_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sinks/loki_sink.cpp")
     target_compile_definitions(xlog PUBLIC XLOG_NO_CLOUD_SINKS)
+else()
+    list(APPEND XLOG_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/sinks/loki_sink.cpp")
 endif()
 
 
@@ -125,7 +133,13 @@ if(NOT XLOG_ENABLE_METRICS)
     target_compile_definitions(xlog PUBLIC XLOG_NO_METRICS)
 endif()
 
-add_library(xlog STATIC ${XLOG_SOURCES})
+add_library(xlog STATIC
+    ${XLOG_SOURCES}
+    src/logger.cpp
+    src/config_watcher.cpp
+    src/hot_reload_manager.cpp
+    src/sinks/loki_sink.cpp
+)
 
 
 find_package(ZLIB)
@@ -144,6 +158,10 @@ find_package(CURL)
 if(CURL_FOUND AND XLOG_ENABLE_CLOUD_SINKS)
     target_link_libraries(xlog PRIVATE CURL::libcurl)
     target_compile_definitions(xlog PRIVATE XLOG_HAS_CURL)
+else()
+    if(XLOG_ENABLE_CLOUD_SINKS)
+        message(FATAL_ERROR "CURL is required for cloud sinks (including LokiSink)")
+    endif()
 endif()
 
 target_include_directories(xlog PUBLIC

@@ -18,4 +18,16 @@ std::string Formatter::format(const std::string& logger_name, LogLevel level, co
     return ss.str();
 }
 
+std::string Formatter::redact(const std::string& message, const std::vector<std::string>& patterns) {
+    std::string redacted = message;
+    for (const auto& pat : patterns) {
+        size_t pos = 0;
+        while ((pos = redacted.find(pat, pos)) != std::string::npos) {
+            redacted.replace(pos, pat.length(), std::string(pat.length(), '*'));
+            pos += pat.length();
+        }
+    }
+    return redacted;
+}
+
 }

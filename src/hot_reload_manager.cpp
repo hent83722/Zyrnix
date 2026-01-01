@@ -1,0 +1,44 @@
+#include "xlog/hot_reload_manager.hpp"
+#include <iostream>
+
+namespace xlog {
+
+HotReloadManager::HotReloadManager(const std::string& config_path)
+    : config_path_(config_path) {}
+
+HotReloadManager::~HotReloadManager() {
+    stop();
+}
+
+void HotReloadManager::start() {
+    watcher_ = std::make_unique<ConfigWatcher>(config_path_, [this]() { reload(); });
+    reload();
+    watcher_->start();
+}
+
+void HotReloadManager::stop() {
+    if (watcher_) watcher_->stop();
+}
+
+void HotReloadManager::reload() {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (!ConfigLoader::load_from_json(config_path_)) {
+        std::cerr << "Failed to reload config: " << config_path_ << std::endl;
+        return;
+    }
+    loggers_ = ConfigLoader::create_loggers();
+    std::cout << "Reloaded logger configuration from: " << config_path_ << std::endl;
+}
+
+std::shared_ptr<Logger> HotReloadManager::get_logger(const std::string& name) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    auto it = loggers_.find(name);
+    return (it != loggers_.end()) ? it->second : nullptr;
+}
+
+std::map<std::string, std::shared_ptr<Logger>> HotReloadManager::get_all_loggers() {
+    std::lock_guard<std::mutex> lock(mtx_);
+    return loggers_;
+}
+
+} // namespace xlog
