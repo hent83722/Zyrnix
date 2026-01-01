@@ -35,6 +35,8 @@ public:
     void log(const std::string& name, LogLevel level, const std::string& message) override;
     void flush();
 
+    bool is_cloud_sink() const override { return true; }
+
     struct Stats {
         uint64_t messages_sent;
         uint64_t messages_failed;
@@ -95,6 +97,8 @@ public:
 
     void log(const std::string& name, LogLevel level, const std::string& message) override;
     void flush();
+
+    bool is_cloud_sink() const override { return true; }
 
     struct Stats {
         uint64_t messages_sent;

@@ -23,10 +23,19 @@ void HotReloadManager::stop() {
 void HotReloadManager::reload() {
     std::lock_guard<std::mutex> lock(mtx_);
     if (!ConfigLoader::load_from_json(config_path_)) {
-        std::cerr << "Failed to reload config: " << config_path_ << std::endl;
+        ++reload_failures_;
+        std::cerr << "Failed to reload config: " << config_path_;
+        std::string reason = ConfigLoader::get_last_error();
+        if (!reason.empty()) {
+            std::cerr << " (reason: " << reason << ")";
+        }
+        std::cerr << std::endl;
         return;
     }
+
     loggers_ = ConfigLoader::create_loggers();
+    last_reload_time_ = std::chrono::system_clock::now();
+    ++reload_successes_;
     std::cout << "Reloaded logger configuration from: " << config_path_ << std::endl;
 }
 

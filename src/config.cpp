@@ -3,6 +3,7 @@
 #include "xlog/sinks/stdout_sink.hpp"
 #include "xlog/sinks/file_sink.hpp"
 #include "xlog/sinks/rotating_file_sink.hpp"
+#include "xlog/sinks/loki_sink.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -11,10 +12,40 @@ namespace xlog {
 
 
 std::vector<LoggerConfig> ConfigLoader::configs_;
+static std::string g_last_error;
+
+static std::vector<std::string> split_and_trim(const std::string& value) {
+    std::vector<std::string> result;
+    std::string current;
+    for (char c : value) {
+        if (c == ',') {
+            if (!current.empty()) {
+                // trim spaces
+                size_t start = current.find_first_not_of(" \t");
+                size_t end = current.find_last_not_of(" \t");
+                if (start != std::string::npos && end != std::string::npos) {
+                    result.push_back(current.substr(start, end - start + 1));
+                }
+            }
+            current.clear();
+        } else {
+            current.push_back(c);
+        }
+    }
+    if (!current.empty()) {
+        size_t start = current.find_first_not_of(" \t");
+        size_t end = current.find_last_not_of(" \t");
+        if (start != std::string::npos && end != std::string::npos) {
+            result.push_back(current.substr(start, end - start + 1));
+        }
+    }
+    return result;
+}
 
 bool ConfigLoader::load_from_json(const std::string& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
+        g_last_error = "Could not open config file: " + path;
         return false;
     }
     
@@ -44,6 +75,18 @@ std::map<std::string, std::shared_ptr<Logger>> ConfigLoader::create_loggers() {
         }
         
         logger->set_level(config.level);
+
+        // Apply redaction configuration (v1.1.3)
+        if (!config.redact_substrings.empty()) {
+            logger->set_redact_patterns(split_and_trim(config.redact_substrings));
+        }
+        if (!config.redact_regexes.empty()) {
+            logger->set_redact_regex_patterns(split_and_trim(config.redact_regexes));
+        }
+        if (!config.redact_presets.empty()) {
+            logger->set_redact_pii_presets(split_and_trim(config.redact_presets));
+        }
+        logger->set_redact_apply_to_cloud_only(config.redact_cloud_only);
         
         for (const auto& sink_type : config.sinks) {
             if (sink_type == "stdout") {
@@ -62,6 +105,42 @@ std::map<std::string, std::shared_ptr<Logger>> ConfigLoader::create_loggers() {
                 size_t max_files = (files_it != config.sink_params.end()) ? std::stoull(files_it->second) : 5;
                 
                 logger->add_sink(std::make_shared<RotatingFileSink>(path, max_size, max_files));
+            } else if (sink_type == "loki") {
+#ifndef XLOG_NO_CLOUD_SINKS
+                auto url_it = config.sink_params.find("loki_url");
+                auto labels_it = config.sink_params.find("loki_labels");
+                auto batch_it = config.sink_params.find("loki_batch_size");
+                auto flush_it = config.sink_params.find("loki_flush_interval_ms");
+                auto timeout_it = config.sink_params.find("loki_timeout_ms");
+                auto insecure_it = config.sink_params.find("loki_insecure_skip_verify");
+                auto ca_it = config.sink_params.find("loki_ca_cert_path");
+
+                std::string url = (url_it != config.sink_params.end()) ? url_it->second : "";
+                std::string labels = (labels_it != config.sink_params.end()) ? labels_it->second : "";
+
+                LokiOptions opts;
+                if (batch_it != config.sink_params.end()) {
+                    opts.batch_size = static_cast<size_t>(std::stoull(batch_it->second));
+                }
+                if (flush_it != config.sink_params.end()) {
+                    opts.flush_interval_ms = static_cast<uint64_t>(std::stoull(flush_it->second));
+                }
+                if (timeout_it != config.sink_params.end()) {
+                    opts.timeout_ms = static_cast<long>(std::stol(timeout_it->second));
+                }
+                if (insecure_it != config.sink_params.end()) {
+                    std::string v = insecure_it->second;
+                    std::transform(v.begin(), v.end(), v.begin(), ::tolower);
+                    opts.insecure_skip_verify = (v == "true" || v == "1");
+                }
+                if (ca_it != config.sink_params.end()) {
+                    opts.ca_cert_path = ca_it->second;
+                }
+
+                if (!url.empty()) {
+                    logger->add_sink(std::make_shared<LokiSink>(url, labels, opts));
+                }
+#endif
             }
         }
         
@@ -73,6 +152,10 @@ std::map<std::string, std::shared_ptr<Logger>> ConfigLoader::create_loggers() {
 
 void ConfigLoader::clear() {
     configs_.clear();
+}
+
+std::string ConfigLoader::get_last_error() {
+    return g_last_error;
 }
 
 LogLevel ConfigLoader::parse_log_level(const std::string& level) {
@@ -93,15 +176,18 @@ bool ConfigLoader::parse_json_internal(const std::string& content) {
  
     
     configs_.clear();
+    g_last_error.clear();
     
     
     size_t loggers_pos = content.find("\"loggers\"");
     if (loggers_pos == std::string::npos) {
+        g_last_error = "Missing \"loggers\" array in configuration";
         return false;
     }
 
     size_t array_start = content.find('[', loggers_pos);
     if (array_start == std::string::npos) {
+        g_last_error = "Malformed configuration: expected '[' after \"loggers\"";
         return false;
     }
     
@@ -126,6 +212,7 @@ bool ConfigLoader::parse_json_internal(const std::string& content) {
         size_t obj_start = pos;
         size_t obj_end = content.find('}', obj_start);
         if (obj_end == std::string::npos) {
+            g_last_error = "Malformed logger object in configuration";
             break;
         }
         
@@ -243,6 +330,44 @@ bool ConfigLoader::parse_json_internal(const std::string& content) {
                 }
             }
         }
+
+        // Optional redaction configuration (v1.1.3)
+        size_t rs_pos = obj.find("\"redact_substrings\"");
+        if (rs_pos != std::string::npos) {
+            size_t colon = obj.find(':', rs_pos);
+            size_t quote1 = obj.find('"', colon);
+            size_t quote2 = obj.find('"', quote1 + 1);
+            if (quote1 != std::string::npos && quote2 != std::string::npos) {
+                config.redact_substrings = obj.substr(quote1 + 1, quote2 - quote1 - 1);
+            }
+        }
+
+        size_t rr_pos = obj.find("\"redact_regexes\"");
+        if (rr_pos != std::string::npos) {
+            size_t colon = obj.find(':', rr_pos);
+            size_t quote1 = obj.find('"', colon);
+            size_t quote2 = obj.find('"', quote1 + 1);
+            if (quote1 != std::string::npos && quote2 != std::string::npos) {
+                config.redact_regexes = obj.substr(quote1 + 1, quote2 - quote1 - 1);
+            }
+        }
+
+        size_t rp_pos = obj.find("\"redact_presets\"");
+        if (rp_pos != std::string::npos) {
+            size_t colon = obj.find(':', rp_pos);
+            size_t quote1 = obj.find('"', colon);
+            size_t quote2 = obj.find('"', quote1 + 1);
+            if (quote1 != std::string::npos && quote2 != std::string::npos) {
+                config.redact_presets = obj.substr(quote1 + 1, quote2 - quote1 - 1);
+            }
+        }
+
+        size_t rco_pos = obj.find("\"redact_cloud_only\"");
+        if (rco_pos != std::string::npos) {
+            size_t colon = obj.find(':', rco_pos);
+            size_t true_pos = obj.find("true", colon);
+            config.redact_cloud_only = (true_pos != std::string::npos && true_pos < obj_end);
+        }
         
         if (!config.name.empty()) {
             configs_.push_back(config);
@@ -251,7 +376,14 @@ bool ConfigLoader::parse_json_internal(const std::string& content) {
         pos = obj_end + 1;
     }
     
-    return !configs_.empty();
+    if (configs_.empty()) {
+        if (g_last_error.empty()) {
+            g_last_error = "No valid logger configurations found";
+        }
+        return false;
+    }
+
+    return true;
 }
 
 Config::Config() {}

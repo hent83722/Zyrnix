@@ -104,6 +104,13 @@ public:
     // PII/Sensitive data redaction
     void set_redact_patterns(const std::vector<std::string>& patterns);
     void clear_redact_patterns();
+    // Regex-based redaction (v1.1.3)
+    void set_redact_regex_patterns(const std::vector<std::string>& patterns);
+    // Built-in PII presets (e.g., "email", "ipv4") (v1.1.3)
+    void set_redact_pii_presets(const std::vector<std::string>& presets);
+    // Control whether redaction applies only to cloud sinks (Loki, CloudWatch, Azure)
+    // or to all sinks (default: all sinks).
+    void set_redact_apply_to_cloud_only(bool cloud_only);
     
     /**
      * @brief Remove sink by index (v1.1.2)
@@ -167,6 +174,9 @@ public:
 
 private:
     std::vector<std::string> redact_patterns_;
+    std::vector<std::string> redact_regex_patterns_;
+    std::vector<std::string> redact_pii_presets_;
+    bool redact_cloud_only_ = false;
     bool should_log(const LogRecord& record) const;
     void check_temporary_level_expiry();
     void record_level_change(LogLevel old_level, LogLevel new_level, const std::string& reason);

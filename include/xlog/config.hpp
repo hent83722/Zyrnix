@@ -19,6 +19,14 @@ struct LoggerConfig {
     bool async = false;
     std::vector<std::string> sinks;
     std::map<std::string, std::string> sink_params;
+
+    // Redaction configuration (v1.1.3)
+    // These are stored as raw strings and interpreted by ConfigLoader
+    // to configure Logger redaction behaviour.
+    std::string redact_substrings;
+    std::string redact_regexes;
+    std::string redact_presets;
+    bool redact_cloud_only = false;
 };
 
 /**
@@ -75,6 +83,12 @@ public:
      * @brief Clear all loaded configurations
      */
     static void clear();
+
+    /**
+     * @brief Get the last configuration parse error message (v1.1.3)
+     * @return Human-readable error string, or empty if no error
+     */
+    static std::string get_last_error();
 
 private:
     static std::vector<LoggerConfig> configs_;

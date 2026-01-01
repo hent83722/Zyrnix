@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cctype>
 #include <thread>
+#include <regex>
 
 namespace xlog {
 
@@ -22,6 +23,21 @@ void Logger::set_redact_patterns(const std::vector<std::string>& patterns) {
 void Logger::clear_redact_patterns() {
     std::lock_guard<std::mutex> lock(mtx_);
     redact_patterns_.clear();
+}
+
+void Logger::set_redact_regex_patterns(const std::vector<std::string>& patterns) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    redact_regex_patterns_ = patterns;
+}
+
+void Logger::set_redact_pii_presets(const std::vector<std::string>& presets) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    redact_pii_presets_ = presets;
+}
+
+void Logger::set_redact_apply_to_cloud_only(bool cloud_only) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    redact_cloud_only_ = cloud_only;
 }
 
 Logger::Logger(std::string n) 
@@ -376,15 +392,68 @@ void Logger::log(LogLevel level, const std::string& message) {
     LogRecord record;
     record.logger_name = name;
     record.level = level;
-    std::string msg_to_log = message;
+    
+    // Copy redaction configuration under lock
+    std::vector<std::string> substr_patterns;
+    std::vector<std::string> regex_patterns;
+    std::vector<std::string> pii_presets;
+    bool redact_cloud_only = false;
+
     {
         std::lock_guard<std::mutex> lock(mtx_);
         if (!should_log(record)) {
             return;
         }
-        if (!redact_patterns_.empty()) {
-            msg_to_log = Formatter::redact(message, redact_patterns_);
+        substr_patterns = redact_patterns_;
+        regex_patterns = redact_regex_patterns_;
+        pii_presets = redact_pii_presets_;
+        redact_cloud_only = redact_cloud_only_;
+    }
+
+    // Apply redaction once and reuse for sinks that require it
+    std::string redacted_message = message;
+    bool has_redaction = false;
+
+    if (!substr_patterns.empty() || !regex_patterns.empty() || !pii_presets.empty()) {
+        if (!substr_patterns.empty()) {
+            redacted_message = Formatter::redact(redacted_message, substr_patterns);
         }
+
+        std::vector<std::regex> compiled;
+        compiled.reserve(regex_patterns.size() + pii_presets.size());
+
+        for (const auto& pat : regex_patterns) {
+            try {
+                compiled.emplace_back(pat, std::regex::ECMAScript);
+            } catch (...) {
+                // Ignore invalid regex patterns to avoid throwing on log path
+            }
+        }
+
+        // Built-in PII presets (v1.1.3)
+        for (const auto& preset : pii_presets) {
+            std::string lower = preset;
+            std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+            try {
+                if (lower == "email") {
+                    compiled.emplace_back("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", std::regex::ECMAScript);
+                } else if (lower == "ipv4") {
+                    compiled.emplace_back("(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[01]?\\d?\\d)){3}", std::regex::ECMAScript);
+                } else if (lower == "credit_card") {
+                    compiled.emplace_back("\\b(?:\\d[ -]*?){13,16}\\b", std::regex::ECMAScript);
+                } else if (lower == "ssn") {
+                    compiled.emplace_back("\\b\\d{3}-\\d{2}-\\d{4}\\b", std::regex::ECMAScript);
+                }
+            } catch (...) {
+                // Ignore preset compilation failures
+            }
+        }
+
+        for (const auto& rx : compiled) {
+            redacted_message = std::regex_replace(redacted_message, rx, "***");
+        }
+
+        has_redaction = (redacted_message != message);
     }
 
     std::shared_lock<std::shared_mutex> sinks_lock(sinks_mtx_);
@@ -401,6 +470,9 @@ void Logger::log(LogLevel level, const std::string& message) {
         }
         SinkGuard guard(entry);
         if (guard) {
+            const bool is_cloud = guard->is_cloud_sink();
+            const bool use_redacted = has_redaction && (!redact_cloud_only || is_cloud);
+            const std::string& msg_to_log = use_redacted ? redacted_message : message;
             guard->log(name, level, msg_to_log);
         }
     }
