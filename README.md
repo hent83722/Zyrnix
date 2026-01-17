@@ -18,7 +18,7 @@
 </div>
 
 ---
-
+ 
 ## 📋 Overview
 
 **Zyrnix** is a modern, lightweight, and blazingly fast logging library for C++17+. Inspired by industry-standard loggers like `spdlog` and `log4j`, Zyrnix combines elegant API design with high performance, making it perfect for everything from hobby projects to enterprise applications.
